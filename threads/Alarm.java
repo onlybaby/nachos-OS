@@ -49,11 +49,13 @@ public class Alarm {
 	 */
 	public void timerInterrupt() {
 		boolean status = Machine.interrupt().disable();
-		for(int i= 0; i < waitQueue.size(); i++){
+		int i= 0;
+		while(i<waitQueue.size()){
 			if(waitQueue.get(i).getTime() < Machine.timer().getTime()){
 				waitQueue.get(i).getThread().ready();
-				waitQueue.remove(i);
-				
+				waitQueue.remove(i);	
+			} else{
+				i++;
 			}
 		}
 		Machine.interrupt().restore(status);

@@ -433,7 +433,7 @@ public class KThread {
         new KThread(new PingTest(1)).setName("forked thread").fork();
         new PingTest(0).run();
     }
-    p static void joinTest1 () {
+    public static void joinTest1 () {
         KThread child1 = new KThread( new Runnable () {
             public void run() {
                 System.out.println("I (heart) Nachos!");

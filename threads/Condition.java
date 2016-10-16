@@ -112,4 +112,5 @@ public class Condition {
 	private Lock conditionLock;
 
 	private LinkedList<Semaphore> waitQueue;
+	
 }

@@ -196,20 +196,22 @@ public class KThread {
         
         boolean intStatus = Machine.interrupt().disable();
         
+        //Machine.interrupt().disable();
+        
         Machine.autoGrader().finishingCurrentThread();
         
         Lib.assertTrue(toBeDestroyed == null);
         toBeDestroyed = currentThread;
         
         currentThread.status = statusFinished;
-        
-        if (currentThread.awake = false){
+        if (currentThread.awake == false)
+        {
+            
             currentThread.tempThread.ready();
         }
         
         sleep();
         Machine.interrupt().restore(intStatus);
-        
     }
     
     /**
@@ -292,10 +294,12 @@ public class KThread {
         Lib.assertTrue(this != currentThread);
         
         boolean intStatus = Machine.interrupt().disable();
-        
-        if (status == statusFinished){
+        if (status == statusFinished)
+        {
             return;
-        }else{
+        }
+        else
+        {
             tempThread = currentThread;
             awake = false;
             currentThread.sleep();
@@ -433,7 +437,7 @@ public class KThread {
         new KThread(new PingTest(1)).setName("forked thread").fork();
         new PingTest(0).run();
     }
-    public static void joinTest1 () {
+    static void joinTest1 () {
         KThread child1 = new KThread( new Runnable () {
             public void run() {
                 System.out.println("I (heart) Nachos!");
@@ -505,7 +509,7 @@ public class KThread {
     
     private static KThread idleThread = null;
     
-    private static KThread tempThread = null;
+    private KThread tempThread = null;  
     
-    private static boolean awake = true;
+    private boolean awake = true;
 }

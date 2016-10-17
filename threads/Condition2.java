@@ -13,8 +13,6 @@ import java.util.*;
  * @see nachos.threads.Condition
  */
 public class Condition2 {
-	
-	private int test = 7;
 	private List<KThread> waitQueue = new ArrayList<KThread>();
 	/**
 	 * Allocate a new condition variable.

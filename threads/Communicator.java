@@ -16,9 +16,9 @@ public class Communicator {
     public Communicator() {
         //we need 3 condition variables with 1 lock
         lock = new Lock();
-        speaker = new Condition2(lock);
-        listener = new Condition2(lock);
-        waiter = new Condition2(lock);
+        speaker = new Condition(lock);
+        listener = new Condition(lock);
+        waiter = new Condition(lock);
         buffer = null;
     }
     
@@ -112,9 +112,9 @@ public class Communicator {
         commTest6();
     }
     
-    private Condition2 speaker; //speaker speaks when the buffer is empty-fill up buffer
-    private Condition2 listener; //listener listens when buffer is full-consume buffer
-    private Condition2 waiter; //waiter make sure speaker return after listener
+    private Condition speaker; //speaker speaks when the buffer is empty-fill up buffer
+    private Condition listener; //listener listens when buffer is full-consume buffer
+    private Condition waiter; //waiter make sure speaker return after listener
     
     private Lock lock;
     private Integer buffer;

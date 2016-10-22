@@ -204,6 +204,7 @@ public class KThread {
         toBeDestroyed = currentThread;
         
         currentThread.status = statusFinished;
+        
         if (currentThread.awake == false)
         {
             
@@ -294,10 +295,12 @@ public class KThread {
         Lib.assertTrue(this != currentThread);
         
         boolean intStatus = Machine.interrupt().disable();
+        
         if (status == statusFinished)
         {
             return;
         }
+        
         else
         {
             tempThread = currentThread;

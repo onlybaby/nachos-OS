@@ -645,6 +645,6 @@ public class UserProcess {
     
     private static final char dbgProcess = 'a';
     
-    protected OpenFile[] fileTable;
+    protected OpenFile[] fileTable = new OpenFile[16];
     protected static final int MAXFILE = 16;
 }

@@ -38,6 +38,7 @@ public class UserProcess {
         for (int i = 2; i < MAXFILE; i++){
             fileTable[i] = null;
         }
+        
     }
     
     /**
@@ -432,7 +433,7 @@ public class UserProcess {
         OpenFile temp = fileTable[fd];	//to find the correct page
         if (temp == null) return -1;	//if page not find return -1
         
-        while (length < 0){				//every time read 1024 bytes or length bytes
+        while (length > 0){				//every time read 1024 bytes or length bytes
             int length_or_1024 = 0;
             if (length > maxBufferSize ) {
                 length_or_1024 = maxBufferSize; //transfer 1024 bytes if length is greater than 1024
@@ -465,7 +466,7 @@ public class UserProcess {
         OpenFile temp = fileTable[fd];	//to find the correct page
         if (temp == null) return -1;	//if page not find return -1
         
-        while (length < 0){				//every time read 1024 bytes or length bytes
+        while (length > 0){				//every time read 1024 bytes or length bytes
             int length_or_1024 = 0;
             if (length > maxBufferSize ) {
                 length_or_1024 = maxBufferSize; //transfer 1024 bytes if length is greater than 1024
@@ -645,6 +646,6 @@ public class UserProcess {
     
     private static final char dbgProcess = 'a';
     
-    protected OpenFile[] fileTable = new OpenFile[16];
+    protected OpenFile[] fileTable;
     protected static final int MAXFILE = 16;
 }

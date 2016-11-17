@@ -442,7 +442,7 @@ public class UserProcess {
             }
             
             int actualRead = temp.read(tempBuffer, 0, length_or_1024); //read file to buffer
-            if (actualRead == -1) return -1; //if fail return -1
+            if (actualRead <= 0) return -1; //if fail return -1
             
             actualRead = writeVirtualMemory(VMaddrBuffer, tempBuffer, 0, actualRead); //write the buffer to VM
             
@@ -475,7 +475,7 @@ public class UserProcess {
             }
             
             int actualRead = readVirtualMemory(VMaddrBuffer, tempBuffer, 0, length_or_1024); //read VM to buffer
-            if (actualRead == -1) return -1; //if fail return -1
+            if (actualRead <= 0) return -1; //if fail return -1
             
             actualRead = temp.write(tempBuffer, 0, actualRead); //read from buffer to file
             

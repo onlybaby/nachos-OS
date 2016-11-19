@@ -25,12 +25,11 @@ public class UserProcess {
      */
     public UserProcess() {
         /*
-        int numPhysPages = Machine.processor().getNumPhysPages();
-        pageTable = new TranslationEntry[numPhysPages];
-        for (int i = 0; i < numPhysPages; i++)
-            pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
+         int numPhysPages = Machine.processor().getNumPhysPages();
+         pageTable = new TranslationEntry[numPhysPages];
+         for (int i = 0; i < numPhysPages; i++)
+         pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
          */
-        
         
         fileTable = new OpenFile [MAXFILE];
         fileTable[0] = UserKernel.console.openForReading();
@@ -39,7 +38,6 @@ public class UserProcess {
         for (int i = 2; i < MAXFILE; i++){
             fileTable[i] = null;
         }
-        
     }
     
     /**
@@ -249,6 +247,7 @@ public class UserProcess {
         
         return amount;
     }
+    
     /**
      * Load the executable with the specified name into this process, and
      * prepare to pass it the specified arguments. Opens the executable, reads
@@ -487,7 +486,7 @@ public class UserProcess {
         OpenFile temp = fileTable[fd];	//to find the correct page
         if (temp == null) return -1;	//if page not find return -1
         
-        while (length > 0){				//every time read 1024 bytes or length bytes
+        while (length < 0){				//every time read 1024 bytes or length bytes
             int length_or_1024 = 0;
             if (length > maxBufferSize ) {
                 length_or_1024 = maxBufferSize; //transfer 1024 bytes if length is greater than 1024
@@ -496,7 +495,7 @@ public class UserProcess {
             }
             
             int actualRead = temp.read(tempBuffer, 0, length_or_1024); //read file to buffer
-            if (actualRead <= 0) return -1; //if fail return -1
+            if (actualRead == -1) return -1; //if fail return -1
             
             actualRead = writeVirtualMemory(VMaddrBuffer, tempBuffer, 0, actualRead); //write the buffer to VM
             
@@ -520,7 +519,7 @@ public class UserProcess {
         OpenFile temp = fileTable[fd];	//to find the correct page
         if (temp == null) return -1;	//if page not find return -1
         
-        while (length > 0){				//every time read 1024 bytes or length bytes
+        while (length < 0){				//every time read 1024 bytes or length bytes
             int length_or_1024 = 0;
             if (length > maxBufferSize ) {
                 length_or_1024 = maxBufferSize; //transfer 1024 bytes if length is greater than 1024
@@ -529,7 +528,7 @@ public class UserProcess {
             }
             
             int actualRead = readVirtualMemory(VMaddrBuffer, tempBuffer, 0, length_or_1024); //read VM to buffer
-            if (actualRead <= 0) return -1; //if fail return -1
+            if (actualRead == -1) return -1; //if fail return -1
             
             actualRead = temp.write(tempBuffer, 0, actualRead); //read from buffer to file
             

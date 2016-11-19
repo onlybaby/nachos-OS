@@ -30,7 +30,7 @@ public class UserKernel extends ThreadedKernel {
                 exceptionHandler();
             }
         });
-        
+        memLock = new Lock();
         for (int ppn = 0; ppn < Machine.processor().getNumPhysPages(); ppn++){
             freePage.add(ppn);
         }
@@ -122,6 +122,6 @@ public class UserKernel extends ThreadedKernel {
     
     public static LinkedList <Integer> freePage = new LinkedList <Integer>();
     
-    public static Lock memLock = new Lock(); //need a lock when allocation memory
+    public static Lock memLock; //need a lock when allocation memory
     
 }

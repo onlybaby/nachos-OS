@@ -159,26 +159,33 @@ public class UserProcess {
         int amount = 0;
         
         while (length >0){
+        	//get the vpn from virtual address
             int vpn = Processor.pageFromAddress(vaddr);
-            
+            //check if vpn is valid, if vpn is smaller than 0 or bigger than the pageTable length
+            //then it's not valid
             if(vpn<0||vpn>=pageTable.length)
             	break;
             
-            pageTable[vpn].used = true;
-            
+            //pageTable[vpn].used = true;
+            //get the offset from virtual address
             int offSet = Processor.offsetFromAddress(vaddr);
+            // get ppn by accessing pageTale according to vpn index
             int ppn = pageTable[vpn].ppn;
+            //where to start reading in physical memory
             int paddr = Processor.pageSize*ppn +offSet;
+            //available space left for each page
             int off = Processor.pageSize - offSet;
-            int actualRead = 0;
-            
+            int actualRead = 0; // successful amount written in each page
+            //if there is enough space left to read in
             if(length < off){
                 actualRead = length;
+            //if there is not enough space left to read in
             }else {
                 actualRead = off;
             }
-            
+         
             System.arraycopy(memory, paddr, data, offset, actualRead);
+            //update corresponding data
             length -= actualRead;
             vaddr += actualRead;
             offset += actualRead;
@@ -223,26 +230,31 @@ public class UserProcess {
         int amount = 0;
         
         while (length >0){
+        	//get the vpn from virtual address
             int vpn = Processor.pageFromAddress(vaddr);
-            
+            //check if vpn is valid, if vpn is smaller than 0 or bigger than the pageTable length
+            //then it's not valid
             if(vpn<0||vpn>=pageTable.length)
             	break;
                         
-            pageTable[vpn].dirty = true;
-            pageTable[vpn].used = true;
-            
+            pageTable[vpn].dirty = true;//set the dirty bit to true
+            //pageTable[vpn].used = true;
+            //get the offset from virtual address
             int offSet = Processor.offsetFromAddress(vaddr);
+            //get ppn by accessing pageTable at index of vpn
             int ppn = pageTable[vpn].ppn;
             int paddr = Processor.pageSize*ppn +offSet;
+            //available spage left in each page
             int off = Processor.pageSize - offSet;
-            int actualRead = 0;
-            
+            int actualRead = 0; // successful amount written in each page
+            //if there is enough space left to read in
             if(length < off){
                 actualRead = length;
+            //if there is not enough space left to read in
             }else {
                 actualRead = off;
             }
-            
+   
             System.arraycopy(data, offset, memory, paddr, actualRead);
             length -= actualRead;
             vaddr += actualRead;

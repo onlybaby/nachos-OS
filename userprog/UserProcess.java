@@ -156,14 +156,16 @@ public class UserProcess {
         
         byte[] memory = Machine.processor().getMemory();
         
-        // for now, just assume that virtual addresses equal physical addresses
-        if (vaddr < 0 || vaddr >= memory.length)
-            return 0;
-        
         int amount = 0;
         
         while (length >0){
             int vpn = Processor.pageFromAddress(vaddr);
+            
+            if(vpn<0||vpn>=pageTable.length)
+            	break;
+            
+            pageTable[vpn].used = true;
+            
             int offSet = Processor.offsetFromAddress(vaddr);
             int ppn = pageTable[vpn].ppn;
             int paddr = Processor.pageSize*ppn +offSet;
@@ -218,14 +220,17 @@ public class UserProcess {
         
         byte[] memory = Machine.processor().getMemory();
         
-        // for now, just assume that virtual addresses equal physical addresses
-        if (vaddr < 0 || vaddr >= memory.length)
-            return 0;
-        
         int amount = 0;
         
         while (length >0){
             int vpn = Processor.pageFromAddress(vaddr);
+            
+            if(vpn<0||vpn>=pageTable.length)
+            	break;
+                        
+            pageTable[vpn].dirty = true;
+            pageTable[vpn].used = true;
+            
             int offSet = Processor.offsetFromAddress(vaddr);
             int ppn = pageTable[vpn].ppn;
             int paddr = Processor.pageSize*ppn +offSet;
@@ -238,7 +243,7 @@ public class UserProcess {
                 actualRead = off;
             }
             
-            System.arraycopy(memory, paddr, data, offset, actualRead);
+            System.arraycopy(data, offset, memory, paddr, actualRead);
             length -= actualRead;
             vaddr += actualRead;
             offset += actualRead;

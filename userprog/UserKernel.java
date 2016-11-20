@@ -31,6 +31,8 @@ public class UserKernel extends ThreadedKernel {
             }
         });
         memLock = new Lock();
+        proLock = new Lock();
+        processID = 0;
         for (int ppn = 0; ppn < Machine.processor().getNumPhysPages(); ppn++){
             freePage.add(ppn);
         }
@@ -121,6 +123,8 @@ public class UserKernel extends ThreadedKernel {
     private static Coff dummy1 = null;
     
     public static LinkedList <Integer> freePage = new LinkedList <Integer>();
+    public static Lock proLock;
+    public static int processID;
     
     public static Lock memLock; //need a lock when allocation memory
     

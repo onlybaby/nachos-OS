@@ -6,6 +6,7 @@ import nachos.userprog.*;
 import nachos.vm.*;
 
 import java.io.EOFException;
+import java.util.HashSet;
 
 /**
  * Encapsulates the state of a user process that is not contained in its user
@@ -34,6 +35,7 @@ public class UserProcess {
         fileTable = new OpenFile [MAXFILE];
         fileTable[0] = UserKernel.console.openForReading();
         fileTable[1] = UserKernel.console.openForWriting();
+        this.pid = UserKernel.processID++;
         
         for (int i = 2; i < MAXFILE; i++){
             fileTable[i] = null;
@@ -576,6 +578,43 @@ public class UserProcess {
         
         return -1;
     }
+    private int handleExec(int file, int argc, char vaddrArgv){
+    	//get the Read coffName from virtual address
+    	String coffName = readVirtualMemoryString(file, 256);
+    	if (coffName == null) return -1;
+    	if (argc < 0 || argc > 16) return -1;
+    	//byte[] buffer = new byte[argc*4];
+    	byte[] buffer = new byte[4];
+    	String[] arguments = new String[argc];
+    	int offset = 4;
+    	for(int i= 0; i < argc; i++){
+    		//read the content from virtual address to the buffer according to the offset and index i
+    		int tempRead = readVirtualMemory(vaddrArgv+offset*i, buffer);
+    		//if read successfully
+    		if(tempRead == buffer.length){
+    			arguments[i] = readVirtualMemoryString(Lib.bytesToInt(buffer, 0), 256);
+    		} else {
+    			return -1;
+    		}
+    		if(arguments[i] == null){
+    			return -1;
+    		}
+    	}
+    	
+    	UserProcess childProcess = new UserProcess();
+    	childProcess.parentProcess = this;
+    	int childPID = -1;
+    	UserKernel.proLock.acquire();
+    	boolean check = childProcess.execute(coffName, arguments);
+    	if(check){
+    		childPID = childProcess.pid;
+    		childrenSet.add(childPID);
+    	}
+    	UserKernel.proLock.release();
+    	
+    	return childPID;
+    }
+    
     private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
     syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
     syscallRead = 6, syscallWrite = 7, syscallClose = 8,
@@ -715,7 +754,9 @@ public class UserProcess {
     private static final int pageSize = Processor.pageSize;
     
     private static final char dbgProcess = 'a';
-    
+    private static int pid;
+    private HashSet<Integer> childrenSet = new HashSet<Integer>();
+    private UserProcess parentProcess = null;
     protected OpenFile[] fileTable;
     protected static final int MAXFILE = 16;
 }

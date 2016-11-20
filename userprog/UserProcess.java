@@ -78,9 +78,9 @@ public class UserProcess {
     public boolean execute(String name, String[] args) {
         if (!load(name, args))
             return false;
-	UserKernel.runningQueue.add(this.pid);
+        UserKernel.runningQueue.add(this.pid);
         new UThread(this).setName(name).fork();
-      
+        
         return true;
     }
     
@@ -162,12 +162,12 @@ public class UserProcess {
         int amount = 0;
         
         while (length >0){
-        	//get the vpn from virtual address
+            //get the vpn from virtual address
             int vpn = Processor.pageFromAddress(vaddr);
             //check if vpn is valid, if vpn is smaller than 0 or bigger than the pageTable length
             //then it's not valid
             if(vpn<0||vpn>=pageTable.length)
-            	break;
+                break;
             
             //pageTable[vpn].used = true;
             //get the offset from virtual address
@@ -182,11 +182,11 @@ public class UserProcess {
             //if there is enough space left to read in
             if(length < off){
                 actualRead = length;
-            //if there is not enough space left to read in
+                //if there is not enough space left to read in
             }else {
                 actualRead = off;
             }
-         
+            
             System.arraycopy(memory, paddr, data, offset, actualRead);
             //update corresponding data
             length -= actualRead;
@@ -233,13 +233,13 @@ public class UserProcess {
         int amount = 0;
         
         while (length >0){
-        	//get the vpn from virtual address
+            //get the vpn from virtual address
             int vpn = Processor.pageFromAddress(vaddr);
             //check if vpn is valid, if vpn is smaller than 0 or bigger than the pageTable length
             //then it's not valid
             if(vpn<0||vpn>=pageTable.length)
-            	break;
-                        
+                break;
+            
             pageTable[vpn].dirty = true;//set the dirty bit to true
             //pageTable[vpn].used = true;
             //get the offset from virtual address
@@ -253,11 +253,11 @@ public class UserProcess {
             //if there is enough space left to read in
             if(length < off){
                 actualRead = length;
-            //if there is not enough space left to read in
+                //if there is not enough space left to read in
             }else {
                 actualRead = off;
             }
-   
+            
             System.arraycopy(data, offset, memory, paddr, actualRead);
             length -= actualRead;
             vaddr += actualRead;
@@ -434,7 +434,7 @@ public class UserProcess {
      * Handle the halt() system call.
      */
     private int handleHalt() {
-        if(this.pid != 0) return -1;
+        if(this.pid != 0) return -1; //call only by the root process
         Machine.halt();
         
         Lib.assertNotReached("Machine.halt() did not halt machine!");
@@ -446,63 +446,64 @@ public class UserProcess {
      */
     private int handleExit(int status) {
         Machine.autoGrader().finishingCurrentProcess(status);
-        for(int i=0; i<16; i++){
-        	handleClose(i);
+        for(int i=0; i<16; i++){ //close all the files in the table
+            handleClose(i);
         }
         UserKernel.memLock.acquire();
-        unloadSections();
+        unloadSections();		//delete all the memory
         UserKernel.memLock.release();
-        coff.close();
-        UserKernel.proLock.acquire();
+        coff.close();		//close coff
         
-        if(parentProcess!= null){
-		//System.out.println("here3");
-        	int temp = Integer.MIN_VALUE;
-        	if(abnormalExitStatus == 0){
-        		temp = status;
-        	}
-		//System.out.println("temp is :" + temp);
-		//System.out.println("pid is:" + this.pid);
-        	parentProcess.exitStatusMap.put(this.pid, temp);
-		//System.out.println("size is:" + exitStatusMap.size());
-        	parentProcess.childCV.wake();
+        UserKernel.proLock.acquire();
+        if(parentProcess!= null){  //if have parent process
+            //System.out.println("here3");
+            int temp = Integer.MIN_VALUE; //set it default value as min integer
+            if(abnormalExitStatus == 0){  //if it is normal exits
+                temp = status;			//set it with status
+            }
+            //System.out.println("temp is :" + temp);
+            //System.out.println("pid is:" + this.pid);
+            parentProcess.exitStatusMap.put(this.pid, temp); //store the child pid with the exit status
+            //System.out.println("size is:" + exitStatusMap.size());
+            parentProcess.childCV.wake(); //wake up the parent
         }
         if(!UserKernel.runningQueue.isEmpty()){
-        	UserKernel.runningQueue.removeFirst();
-        } 
-
-        int size = UserKernel.runningQueue.size();
-        if(size == 0){
-        	Kernel.kernel.terminate();
+            UserKernel.runningQueue.removeFirst(); //maintain the running queue
         }
-       
+        
+        int size = UserKernel.runningQueue.size(); //update the size
+        if(size == 0){			//check if it is last process
+            Kernel.kernel.terminate();
+        }
+        
         UserKernel.proLock.release();
         KThread.finish();
         return 0;
     }
     
     private int handleJoin(int childID, int status){
-    	int joinStatus = -1;
-    	if(childrenSet.contains(childID)){
-    		UserKernel.proLock.acquire();
-    		boolean childExitNormally = exitStatusMap.containsKey(childID);
-		//System.out.println("size is: " + exitStatusMap.size());
-		//System.out.println("boolean is : " + childExitNormally);
-    		while(!exitStatusMap.containsKey(childID)){
-    			childCV.sleep();
-    		}
-		//System.out.println("where");
-    		int temp = exitStatusMap.get(childID);
-    		if(temp!= Integer.MIN_VALUE){
-    			joinStatus = 1;
-    		}else{
-    			joinStatus = 0;
-    			writeVirtualMemory(status,Lib.bytesFromInt(temp));
-    		}
-		UserKernel.proLock.release();
-    	}
-	
-    	return joinStatus;
+        int joinStatus = -1;
+        if(childrenSet.contains(childID)){ //check if the hashset has the child pid
+            UserKernel.proLock.acquire();
+            //	boolean childExitNormally = exitStatusMap.containsKey(childID);
+            //System.out.println("size is: " + exitStatusMap.size());
+            //System.out.println("boolean is : " + childExitNormally);
+            while(!exitStatusMap.containsKey(childID)){ //check if the child is normal exit or not
+                childCV.sleep();
+            }
+            //System.out.println("where");
+            int temp = exitStatusMap.get(childID);  //get the value from the exit status map
+            if(temp!= Integer.MIN_VALUE){
+                joinStatus = 1;						//normal exits
+                writeVirtualMemory(status,Lib.bytesFromInt(temp)); //write to virtual memory
+                
+            }else{
+                joinStatus = 0; //abnormal exit
+            }
+            UserKernel.proLock.release();
+        }
+        
+        return joinStatus;
     }
     
     private int handleCreate(int VMaddr){
@@ -635,40 +636,40 @@ public class UserProcess {
         return -1;
     }
     private int handleExec(int file, int argc, int vaddrArgv){
-    	//get the Read coffName from virtual address
-    	String coffName = readVirtualMemoryString(file, 256);
-    	if (coffName == null) return -1;
-    	if (argc < 0 || argc > 16) return -1;
-    	byte[] buffer = new byte[4];
-    	String[] arguments = new String[argc];
-    	int offset = 4;
-    	for(int i= 0; i < argc; i++){
-    		//read the content from virtual address to the buffer according to the offset and index i
-    		int tempRead = readVirtualMemory(vaddrArgv+offset*i, buffer);
-    		//if read successfully
-    		if(tempRead == buffer.length){
-    			arguments[i] = readVirtualMemoryString(Lib.bytesToInt(buffer, 0), 256);
-    		} else {
-    			return -1;
-    		}
-    		if(arguments[i] == null){
-    			return -1;
-    		}
-    	}
-    	
-    	UserProcess childProcess = newUserProcess();
-    	childProcess.parentProcess = this;
-    	int childPID = -1;
-    	UserKernel.proLock.acquire();
-    	boolean check = childProcess.execute(coffName, arguments);
-    	//UserKernel.runningQueue.add(childProcess);
-    	if(check){
-    		childPID = childProcess.pid;
-    		childrenSet.add(childPID);
-    	}
-    	UserKernel.proLock.release();
-    	
-    	return childPID;	
+        //get the Read coffName from virtual address
+        String coffName = readVirtualMemoryString(file, 256);
+        if (coffName == null) return -1;  //the name is not exist
+        if (argc < 0 || argc > 16) return -1; //out of boundary
+        byte[] buffer = new byte[4];		//read 4 bytes a time
+        String[] arguments = new String[argc];
+        int offset = 4;						//update the offset
+        for(int i= 0; i < argc; i++){
+            //read the content from virtual address to the buffer according to the offset and index i
+            int tempRead = readVirtualMemory(vaddrArgv+offset*i, buffer);
+            //if read successfully
+            if(tempRead == buffer.length){
+                arguments[i] = readVirtualMemoryString(Lib.bytesToInt(buffer, 0), 256);
+            } else {
+                return -1;
+            }
+            if(arguments[i] == null){
+                return -1;
+            }
+        }
+        
+        UserProcess childProcess = newUserProcess(); //execute the user program in a new child process
+        childProcess.parentProcess = this;		//save the detail of child in parent
+        int childPID = -1;
+        UserKernel.proLock.acquire();
+        boolean check = childProcess.execute(coffName, arguments); //check if the execute success
+        //UserKernel.runningQueue.add(childProcess);
+        if(check){
+            childPID = childProcess.pid; //get the new child process pid
+            childrenSet.add(childPID);  //add the pid to the hash set
+        }
+        UserKernel.proLock.release();
+        
+        return childPID;
     }
     
     private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
@@ -729,7 +730,7 @@ public class UserProcess {
      * <td><tt>int  unlink(char *name);</tt></td>
      * </tr>
      * </table>
-     * 
+     *
      * @param syscall the syscall number.
      * @param a0 the first syscall argument.
      * @param a1 the second syscall argument.
@@ -756,9 +757,9 @@ public class UserProcess {
             case syscallUnlink:
                 return handleUnlink(a0);
             case syscallExec:
-            	return handleExec(a0,a1,a2);
+                return handleExec(a0,a1,a2);
             case syscallJoin:
-            	return handleJoin(a0,a1);
+                return handleJoin(a0,a1);
             default:
                 Lib.debug(dbgProcess, "Unknown syscall " + syscall);
                 Lib.assertNotReached("Unknown system call!");
@@ -770,7 +771,7 @@ public class UserProcess {
      * Handle a user exception. Called by <tt>UserKernel.exceptionHandler()</tt>
      * . The <i>cause</i> argument identifies which exception occurred; see the
      * <tt>Processor.exceptionZZZ</tt> constants.
-     * 
+     *
      * @param cause the user exception that occurred.
      */
     public void handleException(int cause) {
@@ -813,13 +814,12 @@ public class UserProcess {
     private int argc, argv;
     
     private static final int pageSize = Processor.pageSize;
-    private static int abnormalExitStatus = 0;
+    private static int abnormalExitStatus = 0;   //0: normal exit,1: abnormal exit
     private static final char dbgProcess = 'a';
     private int pid;
-    private int runningCounter = 0;
-    private Condition childCV = new Condition(UserKernel.proLock);
-    private HashSet<Integer> childrenSet = new HashSet<Integer>();
-    private HashMap<Integer, Integer> exitStatusMap = new HashMap<Integer, Integer>();
+    private Condition childCV = new Condition(UserKernel.proLock); 
+    private HashSet<Integer> childrenSet = new HashSet<Integer>(); //store all the child pid
+    private HashMap<Integer, Integer> exitStatusMap = new HashMap<Integer, Integer>(); //store the pid with exit status
     private UserProcess parentProcess = null;
     protected OpenFile[] fileTable;
     protected static final int MAXFILE = 16;

@@ -34,7 +34,7 @@ public class UserKernel extends ThreadedKernel {
         proLock = new Lock();
         processID = 0;
         for (int ppn = 0; ppn < Machine.processor().getNumPhysPages(); ppn++){
-            freePage.add(ppn);
+            freePage.add(ppn); //get the free physical pages
         }
         
     }
@@ -122,9 +122,9 @@ public class UserKernel extends ThreadedKernel {
     // dummy variables to make javac smarter
     private static Coff dummy1 = null;
     
-    public static LinkedList <Integer> freePage = new LinkedList <Integer>();
-    public static Lock proLock;
+    public static LinkedList <Integer> freePage = new LinkedList <Integer>(); //maintain the free physical pages
+    public static Lock proLock;    //need lock to access the process
     public static int processID;
-    public static LinkedList<Integer> runningQueue = new LinkedList<Integer>(); 
+    public static LinkedList<Integer> runningQueue = new LinkedList<Integer>(); //maintain the running process
     public static Lock memLock; //need a lock when allocation memory
 }

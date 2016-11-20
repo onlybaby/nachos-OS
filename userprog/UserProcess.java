@@ -6,6 +6,7 @@ import nachos.userprog.*;
 import nachos.vm.*;
 
 import java.io.EOFException;
+import java.util.HashMap;
 import java.util.HashSet;
 
 /**
@@ -433,7 +434,7 @@ public class UserProcess {
      * Handle the halt() system call.
      */
     private int handleHalt() {
-        
+        if(this.pid != 0) return -1;
         Machine.halt();
         
         Lib.assertNotReached("Machine.halt() did not halt machine!");
@@ -445,8 +446,51 @@ public class UserProcess {
      */
     private int handleExit(int status) {
         Machine.autoGrader().finishingCurrentProcess(status);
-        
+        for(int i=0; i<16; i++){
+        	handleClose(i);
+        }
+        UserKernel.memLock.acquire();
+        unloadSections();
+        UserKernel.memLock.release();
+        coff.close();
+        UserKernel.proLock.acquire();
+        if(parentProcess!= null){
+        	int temp = Integer.MIN_VALUE;
+        	if(abnormalExitStatus == 0){
+        		temp = status;
+        	}
+        	exitStatusMap.put(this.pid, temp);
+        	parentProcess.childCV.wake();
+        }
+        if(!UserKernel.runningQueue.isEmpty()){
+        	UserKernel.runningQueue.removeFirst();
+        }
+        int size = UserKernel.runningQueue.size();
+        if(size == 0){
+        	Kernel.kernel.terminate();
+        }
+        UserKernel.proLock.release();
+        KThread.finish();
         return 0;
+    }
+    
+    private int handleJoin(int childID, int status){
+    	int joinStatus = -1;
+    	if(childrenSet.contains(childID)){
+    		UserKernel.proLock.acquire();
+    		boolean childExitNormally = exitStatusMap.containsKey(childID);
+    		while(!childExitNormally){
+    			childCV.sleep();
+    		}
+    		int temp = exitStatusMap.get(childID);
+    		if(temp!= Integer.MIN_VALUE){
+    			joinStatus = 1;
+    		}else{
+    			joinStatus = 0;
+    			writeVirtualMemory(status,Lib.bytesFromInt(temp));
+    		}
+    	}
+    	return joinStatus;
     }
     
     private int handleCreate(int VMaddr){
@@ -578,12 +622,11 @@ public class UserProcess {
         
         return -1;
     }
-    private int handleExec(int file, int argc, char vaddrArgv){
+    private int handleExec(int file, int argc, int vaddrArgv){
     	//get the Read coffName from virtual address
     	String coffName = readVirtualMemoryString(file, 256);
     	if (coffName == null) return -1;
     	if (argc < 0 || argc > 16) return -1;
-    	//byte[] buffer = new byte[argc*4];
     	byte[] buffer = new byte[4];
     	String[] arguments = new String[argc];
     	int offset = 4;
@@ -601,18 +644,19 @@ public class UserProcess {
     		}
     	}
     	
-    	UserProcess childProcess = new UserProcess();
+    	UserProcess childProcess = newUserProcess();
     	childProcess.parentProcess = this;
     	int childPID = -1;
     	UserKernel.proLock.acquire();
     	boolean check = childProcess.execute(coffName, arguments);
+    	UserKernel.runningQueue.add(childProcess);
     	if(check){
     		childPID = childProcess.pid;
     		childrenSet.add(childPID);
     	}
     	UserKernel.proLock.release();
     	
-    	return childPID;
+    	return childPID;	
     }
     
     private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
@@ -699,7 +743,10 @@ public class UserProcess {
                 return handleClose(a0);
             case syscallUnlink:
                 return handleUnlink(a0);
-                
+            case syscallExec:
+            	return handleExec(a0,a1,a2);
+            case syscallJoin:
+            	return handleJoin(a0,a1);
             default:
                 Lib.debug(dbgProcess, "Unknown syscall " + syscall);
                 Lib.assertNotReached("Unknown system call!");
@@ -731,6 +778,8 @@ public class UserProcess {
             default:
                 Lib.debug(dbgProcess, "Unexpected exception: "
                           + Processor.exceptionNames[cause]);
+                abnormalExitStatus = 1;
+                handleExit(0);
                 Lib.assertNotReached("Unexpected exception");
         }
     }
@@ -752,10 +801,12 @@ public class UserProcess {
     private int argc, argv;
     
     private static final int pageSize = Processor.pageSize;
-    
+    private static int abnormalExitStatus = 0;
     private static final char dbgProcess = 'a';
-    private static int pid;
+    private int pid;
+    private Condition childCV = new Condition(UserKernel.proLock);
     private HashSet<Integer> childrenSet = new HashSet<Integer>();
+    private HashMap<Integer, Integer> exitStatusMap = new HashMap<Integer, Integer>();
     private UserProcess parentProcess = null;
     protected OpenFile[] fileTable;
     protected static final int MAXFILE = 16;

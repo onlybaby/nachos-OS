@@ -127,5 +127,5 @@ public class UserKernel extends ThreadedKernel {
     public static int processID;
     public static LinkedList<UserProcess> runningQueue; 
     public static Lock memLock; //need a lock when allocation memory
-    
+    public static int runningCount = 0;
 }

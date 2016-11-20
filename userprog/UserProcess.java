@@ -79,6 +79,7 @@ public class UserProcess {
         if (!load(name, args))
             return false;
         
+        UserKernel.runningCount++;
         new UThread(this).setName(name).fork();
         
         return true;
@@ -454,21 +455,32 @@ public class UserProcess {
         UserKernel.memLock.release();
         coff.close();
         UserKernel.proLock.acquire();
+        
         if(parentProcess!= null){
+		System.out.println("here3");
         	int temp = Integer.MIN_VALUE;
         	if(abnormalExitStatus == 0){
         		temp = status;
         	}
-        	exitStatusMap.put(this.pid, temp);
+		System.out.println("temp is :" + temp);
+		System.out.println("pid is:" + this.pid);
+        	parentProcess.exitStatusMap.put(this.pid, temp);
+		System.out.println("size is:" + exitStatusMap.size());
         	parentProcess.childCV.wake();
         }
-        if(!UserKernel.runningQueue.isEmpty()){
+        
+        /*if(!UserKernel.runningQueue.isEmpty()){
         	UserKernel.runningQueue.removeFirst();
+        }*/
+        if(--UserKernel.runningCount ==0){
+        	Kernel.kernel.terminate();
         }
+        /*
         int size = UserKernel.runningQueue.size();
         if(size == 0){
         	Kernel.kernel.terminate();
         }
+        */
         UserKernel.proLock.release();
         KThread.finish();
         return 0;
@@ -479,9 +491,12 @@ public class UserProcess {
     	if(childrenSet.contains(childID)){
     		UserKernel.proLock.acquire();
     		boolean childExitNormally = exitStatusMap.containsKey(childID);
-    		while(!childExitNormally){
+		System.out.println("size is: " + exitStatusMap.size());
+		System.out.println("boolean is : " + childExitNormally);
+    		while(!exitStatusMap.containsKey(childID)){
     			childCV.sleep();
     		}
+		System.out.println("where");
     		int temp = exitStatusMap.get(childID);
     		if(temp!= Integer.MIN_VALUE){
     			joinStatus = 1;
@@ -649,7 +664,7 @@ public class UserProcess {
     	int childPID = -1;
     	UserKernel.proLock.acquire();
     	boolean check = childProcess.execute(coffName, arguments);
-    	UserKernel.runningQueue.add(childProcess);
+    	//UserKernel.runningQueue.add(childProcess);
     	if(check){
     		childPID = childProcess.pid;
     		childrenSet.add(childPID);
@@ -804,6 +819,7 @@ public class UserProcess {
     private static int abnormalExitStatus = 0;
     private static final char dbgProcess = 'a';
     private int pid;
+    private int runningCounter = 0;
     private Condition childCV = new Condition(UserKernel.proLock);
     private HashSet<Integer> childrenSet = new HashSet<Integer>();
     private HashMap<Integer, Integer> exitStatusMap = new HashMap<Integer, Integer>();

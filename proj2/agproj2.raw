@@ -1,4 +1,4 @@
-------[ Sat Nov 19 23:17:56 2016 ]------
+------[ Sat Nov 19 23:47:33 2016 ]------
 --[ tests write1.c ]--
 nachos 5.0j initializing... config interrupt timer processor console user-check grader
 
@@ -199,6 +199,6 @@ nachos 5.0j initializing... config interrupt timer processor console user-check 
 execing exit1.coff...
 ...passed
 joining 1...
-...passed (status from child = 0)
+...passed (status from child = 123)
 
 success

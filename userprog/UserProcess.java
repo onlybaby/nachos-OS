@@ -78,10 +78,9 @@ public class UserProcess {
     public boolean execute(String name, String[] args) {
         if (!load(name, args))
             return false;
-        
-        UserKernel.runningCount++;
+	UserKernel.runningQueue.add(this.pid);
         new UThread(this).setName(name).fork();
-        
+      
         return true;
     }
     
@@ -92,7 +91,7 @@ public class UserProcess {
     public void saveState() {
     }
     
-    /**
+    /*
      * Restore the state of this process after a context switch. Called by
      * <tt>UThread.restoreState()</tt>.
      */
@@ -457,30 +456,26 @@ public class UserProcess {
         UserKernel.proLock.acquire();
         
         if(parentProcess!= null){
-		System.out.println("here3");
+		//System.out.println("here3");
         	int temp = Integer.MIN_VALUE;
         	if(abnormalExitStatus == 0){
         		temp = status;
         	}
-		System.out.println("temp is :" + temp);
-		System.out.println("pid is:" + this.pid);
+		//System.out.println("temp is :" + temp);
+		//System.out.println("pid is:" + this.pid);
         	parentProcess.exitStatusMap.put(this.pid, temp);
-		System.out.println("size is:" + exitStatusMap.size());
+		//System.out.println("size is:" + exitStatusMap.size());
         	parentProcess.childCV.wake();
         }
-        
-        /*if(!UserKernel.runningQueue.isEmpty()){
+        if(!UserKernel.runningQueue.isEmpty()){
         	UserKernel.runningQueue.removeFirst();
-        }*/
-        if(--UserKernel.runningCount ==0){
-        	Kernel.kernel.terminate();
-        }
-        /*
+        } 
+
         int size = UserKernel.runningQueue.size();
         if(size == 0){
         	Kernel.kernel.terminate();
         }
-        */
+       
         UserKernel.proLock.release();
         KThread.finish();
         return 0;
@@ -491,12 +486,12 @@ public class UserProcess {
     	if(childrenSet.contains(childID)){
     		UserKernel.proLock.acquire();
     		boolean childExitNormally = exitStatusMap.containsKey(childID);
-		System.out.println("size is: " + exitStatusMap.size());
-		System.out.println("boolean is : " + childExitNormally);
+		//System.out.println("size is: " + exitStatusMap.size());
+		//System.out.println("boolean is : " + childExitNormally);
     		while(!exitStatusMap.containsKey(childID)){
     			childCV.sleep();
     		}
-		System.out.println("where");
+		//System.out.println("where");
     		int temp = exitStatusMap.get(childID);
     		if(temp!= Integer.MIN_VALUE){
     			joinStatus = 1;
@@ -504,7 +499,9 @@ public class UserProcess {
     			joinStatus = 0;
     			writeVirtualMemory(status,Lib.bytesFromInt(temp));
     		}
+		UserKernel.proLock.release();
     	}
+	
     	return joinStatus;
     }
     

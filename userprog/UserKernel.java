@@ -125,7 +125,6 @@ public class UserKernel extends ThreadedKernel {
     public static LinkedList <Integer> freePage = new LinkedList <Integer>();
     public static Lock proLock;
     public static int processID;
-    public static LinkedList<UserProcess> runningQueue; 
+    public static LinkedList<Integer> runningQueue = new LinkedList<Integer>(); 
     public static Lock memLock; //need a lock when allocation memory
-    public static int runningCount = 0;
 }

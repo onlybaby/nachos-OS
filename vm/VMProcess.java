@@ -73,7 +73,7 @@ public class VMProcess extends UserProcess {
         return true;
 	}
 	
-	public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+	/*public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
         Lib.assertTrue(offset >= 0 && length >= 0
                        && offset + length <= data.length);
         
@@ -116,7 +116,11 @@ public class VMProcess extends UserProcess {
         }
         
         return amount;
-    }
+    }*/
+	
+	public void handlePageFault(int vpn){
+		
+	}
 
 	/**
 	 * Release any resources allocated by <tt>loadSections()</tt>.
@@ -136,6 +140,10 @@ public class VMProcess extends UserProcess {
 		Processor processor = Machine.processor();
 
 		switch (cause) {
+		case Processor.exceptionPageFault: 
+			int vaddress = processor.readRegister(Processor.regBadVAddr);
+			int vpn = Processor.pageFromAddress(vaddress);
+			handlePageFault(vpn);
 		default:
 			super.handleException(cause);
 			break;

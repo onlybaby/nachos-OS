@@ -41,7 +41,8 @@ public class VMProcess extends UserProcess {
 	 */
 	protected boolean loadSections() {
 		UserKernel.memLock.acquire(); //require a lock when we do memory allocation
-        
+        //System.out.println("here~~~~~~~~~~~~~~");
+
         if (numPages > UserKernel.freePage.size()) {
             UserKernel.memLock.release(); //release the lock and return false if there is not enough physical memory to allocate
             coff.close();
@@ -50,6 +51,7 @@ public class VMProcess extends UserProcess {
         }
         
         coffSectionNum = new int[numPages];
+	coffPin =  new int[numPages];
         pageTable = new TranslationEntry[numPages]; //create a page table with the size numPage which we need
         
         for (int i = 0; i < numPages; i++){
@@ -68,16 +70,19 @@ public class VMProcess extends UserProcess {
             for (int i = 0; i < section.getLength(); i++) {
                 int vpn = section.getFirstVPN() + i;
                 //pageTable[vpn].vpn = vpn
-                lastVPN = vpn;
+                //lastVPN = vpn;
+                coffPin[vpn] = 1;
                 coffSectionNum[vpn] = s;
                 pageTable[vpn].readOnly = section.isReadOnly(); //set read only bit to each entry in page table
             }
         }
-        
+        //System.out.println("here~~~~~~~~~~~~~~");
+
         return true;
 	}
 	
-	public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+	/*public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+	System.out.println("Oh Yeah~~~~~~~~~~~~~~");
         Lib.assertTrue(offset >= 0 && length >= 0
                        && offset + length <= data.length);
         
@@ -93,6 +98,7 @@ public class VMProcess extends UserProcess {
             if(vpn<0||vpn>=pageTable.length)
                 break;
             if(pageTable[vpn].valid == false){
+	    	System.out.println("pageFualt");
             	handlePageFault(vpn);
             } 
             //pageTable[vpn].used = true;
@@ -124,7 +130,8 @@ public class VMProcess extends UserProcess {
         return amount;
     }
 	
-	public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+ 	public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+	//System.out.println("here~~~~~~~~~~~~~~");
         Lib.assertTrue(offset >= 0 && length >= 0
                        && offset + length <= data.length);
         
@@ -168,20 +175,28 @@ public class VMProcess extends UserProcess {
         }
         
         return amount;
-    }
+    }*/
 	
 	public void handlePageFault(int vpn){
-		System.out.println("here~~~~~~~~~~~~");
+		System.out.println("vpn is " + vpn);
+
+		//System.out.println("here~~~~~~~~~~~~~~~");
 		//TranslationEntry 
 		if(pageTable[vpn].dirty == false){
+			//System.out.println("In here~~~~~~~~~~~~~~");
+
 			int sectNum = coffSectionNum[vpn]; 
 			int ppn = UserKernel.freePage.removeFirst();
 			//if this is a coff page
-			if(vpn <=lastVPN){
-				CoffSection section = coff.getSection(vpn);
-				section.loadPage(sectNum, ppn);
+			if(coffPin[vpn] == 1){
+				//System.out.println("What~~~~~~~~~~~~~~");
+				CoffSection section = coff.getSection(sectNum);
+				int num = vpn - section.getFirstVPN();
+				section.loadPage(num, ppn);
+				System.out.println("ppn is : " + ppn);
 			//if this is not a coff page
 			} else {
+				System.out.println("hereherehere~~~~~~~~~~~~~~");
 				byte[] memory = Machine.processor().getMemory();
 				byte[] buffer = new byte[pageSize];
 				System.arraycopy(buffer, 0, memory, pageTable[vpn].ppn*pageSize, pageSize);
@@ -210,6 +225,7 @@ public class VMProcess extends UserProcess {
 
 		switch (cause) {
 		case Processor.exceptionPageFault: 
+			//System.out.println("here~~~~~~~~~~~~~~~");
 			int vaddress = processor.readRegister(Processor.regBadVAddr);
 			int vpn = Processor.pageFromAddress(vaddress);
 			handlePageFault(vpn);
@@ -223,9 +239,11 @@ public class VMProcess extends UserProcess {
 	private static final int pageSize = Processor.pageSize;
 
 	private static final char dbgProcess = 'a';
+	private int[] coffPage;
 
 	private static final char dbgVM = 'v';
 	private static int lastVPN;
 	private int[] coffSectionNum;
+	private int[] coffPin;
 	
 }

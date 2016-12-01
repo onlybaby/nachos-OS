@@ -51,12 +51,12 @@ public class VMProcess extends UserProcess {
         }
         
         coffSectionNum = new int[numPages];
-	coffPin =  new int[numPages];
+        coffPin =  new int[numPages];
         pageTable = new TranslationEntry[numPages]; //create a page table with the size numPage which we need
         
         for (int i = 0; i < numPages; i++){
             //int ppn = UserKernel.freePage.removeFirst(); //get the vpn from the physical memory
-            pageTable[i] = new TranslationEntry(i, -1, false, false, false, false); //translate vpn to ppn with translationEntry
+            pageTable[i] = new TranslationEntry(i, i, false, false, false, false); //translate vpn to ppn with translationEntry
         }
         
         UserKernel.memLock.release(); //release the lock after we allocate the memory
@@ -69,9 +69,10 @@ public class VMProcess extends UserProcess {
             
             for (int i = 0; i < section.getLength(); i++) {
                 int vpn = section.getFirstVPN() + i;
-                //pageTable[vpn].vpn = vpn
+                if(pageTable[vpn] == null) return false;
+                pageTable[vpn].vpn = i;
                 //lastVPN = vpn;
-                coffPin[vpn] = 1;
+                //coffPin[vpn] = 1;
                 coffSectionNum[vpn] = s;
                 pageTable[vpn].readOnly = section.isReadOnly(); //set read only bit to each entry in page table
             }
@@ -81,15 +82,19 @@ public class VMProcess extends UserProcess {
         return true;
 	}
 	
-	/*public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
-	System.out.println("Oh Yeah~~~~~~~~~~~~~~");
+	public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+	   System.out.println("Oh Yeah~~~~~~~~~~~~~~");
         Lib.assertTrue(offset >= 0 && length >= 0
                        && offset + length <= data.length);
         
         byte[] memory = Machine.processor().getMemory();
         
         int amount = 0;
-        
+        int checkVPN = Processor.pageFromAddress(vaddr);
+        if(pageTable[checkVPN].valid == false){
+	    	System.out.println("pageFualt");
+            	handlePageFault(checkVPN);
+            } 
         while (length >0){
             //get the vpn from virtual address
             int vpn = Processor.pageFromAddress(vaddr);
@@ -97,10 +102,6 @@ public class VMProcess extends UserProcess {
             //then it's not valid
             if(vpn<0||vpn>=pageTable.length)
                 break;
-            if(pageTable[vpn].valid == false){
-	    	System.out.println("pageFualt");
-            	handlePageFault(vpn);
-            } 
             //pageTable[vpn].used = true;
             //get the offset from virtual address
             int offSet = Processor.offsetFromAddress(vaddr);
@@ -138,7 +139,11 @@ public class VMProcess extends UserProcess {
         byte[] memory = Machine.processor().getMemory();
         
         int amount = 0;
-        
+        int checkVPN = Processor.pageFromAddress(vaddr);
+        if(pageTable[checkVPN].valid == false){
+	    	System.out.println("pageFualt");
+            	handlePageFault(checkVPN);
+            } 
         while (length >0){
             //get the vpn from virtual address
             int vpn = Processor.pageFromAddress(vaddr);
@@ -146,9 +151,6 @@ public class VMProcess extends UserProcess {
             //then it's not valid
             if(vpn<0||vpn>=pageTable.length)
                 break;
-            if(pageTable[vpn].valid == false){
-            	handlePageFault(vpn);
-            } 
             pageTable[vpn].dirty = true;//set the dirty bit to true
             //pageTable[vpn].used = true;
             //get the offset from virtual address
@@ -175,34 +177,37 @@ public class VMProcess extends UserProcess {
         }
         
         return amount;
-    }*/
-	
-	public void handlePageFault(int vpn){
-		System.out.println("vpn is " + vpn);
-
-		//System.out.println("here~~~~~~~~~~~~~~~");
-		//TranslationEntry 
-		if(pageTable[vpn].dirty == false){
-			//System.out.println("In here~~~~~~~~~~~~~~");
-
-			int sectNum = coffSectionNum[vpn]; 
+    }
+	public void handlePageFault(int faultVPN){
+		if(pageTable[faultVPN].dirty == false){
+			for (int s = 0; s < coff.getNumSections(); s++) {
+				CoffSection section = coff.getSection(s);     
+		        Lib.debug(dbgProcess, "\tinitializing " + section.getName()
+		                      + " section (" + section.getLength() + " pages)");       
+		        for (int i = 0; i < section.getLength(); i++) {
+		        	int vpn = section.getFirstVPN() + i;
+		        //	UserKernel.proLock.acquire();
+		        	System.out.println("faultVPN is: " + faultVPN + " vpn is : " + vpn);
+		            if(faultVPN == vpn){
+		            	if(UserKernel.freePage.size()>= 0){
+		            		int ppn = UserKernel.freePage.removeFirst();
+		            		if(pageTable[faultVPN] == null) return;
+		            		//System.out.println(ppn);
+		            		section.loadPage(i, ppn);
+		            		pageTable[faultVPN].valid = true;
+		            		pageTable[faultVPN].dirty = true;
+		            		//UserKernel.proLock.release();
+		            		return;
+		            	}
+		            }
+		        }
+		     }
 			int ppn = UserKernel.freePage.removeFirst();
-			//if this is a coff page
-			if(coffPin[vpn] == 1){
-				//System.out.println("What~~~~~~~~~~~~~~");
-				CoffSection section = coff.getSection(sectNum);
-				int num = vpn - section.getFirstVPN();
-				section.loadPage(num, ppn);
-				System.out.println("ppn is : " + ppn);
-			//if this is not a coff page
-			} else {
-				System.out.println("hereherehere~~~~~~~~~~~~~~");
-				byte[] memory = Machine.processor().getMemory();
-				byte[] buffer = new byte[pageSize];
-				System.arraycopy(buffer, 0, memory, pageTable[vpn].ppn*pageSize, pageSize);
-			}
-			pageTable[vpn].dirty = true;
-			pageTable[vpn].valid = true;
+			byte[] memory = Machine.processor().getMemory();
+			byte[] buffer = new byte[pageSize];
+			System.arraycopy(buffer, 0, memory, pageTable[faultVPN].ppn*pageSize, pageSize);
+			pageTable[faultVPN].dirty = true;
+			pageTable[faultVPN].valid = true;
 		}
 	}
 
@@ -225,7 +230,6 @@ public class VMProcess extends UserProcess {
 
 		switch (cause) {
 		case Processor.exceptionPageFault: 
-			//System.out.println("here~~~~~~~~~~~~~~~");
 			int vaddress = processor.readRegister(Processor.regBadVAddr);
 			int vpn = Processor.pageFromAddress(vaddress);
 			handlePageFault(vpn);
@@ -245,5 +249,6 @@ public class VMProcess extends UserProcess {
 	private static int lastVPN;
 	private int[] coffSectionNum;
 	private int[] coffPin;
+	//private Lock VMPLock;
 	
 }

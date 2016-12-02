@@ -445,6 +445,7 @@ public class UserProcess {
      * Handle the exit() system call.
      */
     private int handleExit(int status) {
+    	System.out.println("exit here !!!!");
         Machine.autoGrader().finishingCurrentProcess(status);
         for(int i=0; i<16; i++){ //close all the files in the table
             handleClose(i);
@@ -587,6 +588,7 @@ public class UserProcess {
     }
     
     private int handleWrite(int fd, int VMaddrBuffer, int length){
+    	//System.out.println("anything");
         int maxBufferSize = 1024;  //page size
         byte[] tempBuffer = new byte[maxBufferSize]; //temp buffer to store the contents from file
         int count = 0;		//total bytes read

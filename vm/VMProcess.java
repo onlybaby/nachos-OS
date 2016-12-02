@@ -246,3 +246,5 @@ public class VMProcess extends UserProcess {
     private int[] coffSectionNum;
     private int[] coffPin;
     //private Lock VMPLock;
+    
+}

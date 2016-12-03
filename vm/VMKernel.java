@@ -25,7 +25,10 @@ public class VMKernel extends UserKernel {
         super.initialize(args);
         //VMFreePage = UserKernel.freePage;
         
-        OpenFile file = ThreadedKernel.fileSystem.open(swapFileName, true);
+        swapFile = ThreadedKernel.fileSystem.open(swapFileName, true);
+        freeSwapList = new LinkedList<Integer>();
+        this.spn = 0;
+        //swapFile = new OpenFile(file, swapFileName);
         victim = 0;
         invertedPT = new invertedData[Machine.processor().getNumPhysPages()];
     }
@@ -47,6 +50,21 @@ public class VMKernel extends UserKernel {
     //update the inverted table
     public static boolean swapIn(){
         return true;
+    }
+    public static boolean swapOut(int ppn){
+    	//if(ppn >= 0 || ppn)
+    	int tempSPN = 0;
+    	 if(VMKernel.freeSwapList.size() == 0){
+         	tempSPN = ++spn;
+         } else {
+         	tempSPN = VMKernel.freeSwapList.removeFirst();
+         }
+  
+    	 invertedPT[ppn].entry.vpn = tempSPN;
+    	 byte[] memory = Machine.processor().getMemory();
+    	 swapFile.write(tempSPN*Processor.pageSize, memory, ppn*Processor.pageSize, Processor.pageSize);  
+    	 
+    	 return true;
     }
     public static int pageAllocation(){
         if(freePage.size()!= 0){
@@ -97,4 +115,6 @@ public class VMKernel extends UserKernel {
     public static String swapFileName = ".TEM";
     public static invertedData[] invertedPT;
     public static int victim; 
+    public static LinkedList<Integer> freeSwapList;
+    public static int spn;
 }

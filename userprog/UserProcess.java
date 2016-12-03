@@ -803,7 +803,7 @@ public class UserProcess {
     protected Coff coff;
     
     /** This process's page table. */
-    protected TranslationEntry[] pageTable;
+    public TranslationEntry[] pageTable;
     
     /** The number of contiguous pages occupied by the program. */
     protected int numPages;

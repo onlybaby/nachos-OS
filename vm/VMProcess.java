@@ -104,6 +104,8 @@ public class VMProcess extends UserProcess {
             int offSet = Processor.offsetFromAddress(vaddr);
             // get ppn by accessing pageTale according to vpn index
             int ppn = pageTable[vpn].ppn;
+            VMKernel.invertedPT[ppn].pinned =  true;
+            VMKernel.numPinned++;
             //where to start reading in physical memory
             int paddr = Processor.pageSize*ppn +offSet;
             //available space left for each page
@@ -123,6 +125,11 @@ public class VMProcess extends UserProcess {
             vaddr += actualRead;
             offset += actualRead;
             amount += actualRead;
+            VMKernel.invertedPT[ppn].pinned =  false;
+            VMKernel.numPinned--;
+            if(VMKernel.numPinned == VMKernel.invertedPT.length-1){
+                VMKernel.unpinnedPage.wake();
+            }
         }
         
         return amount;
@@ -136,7 +143,7 @@ public class VMProcess extends UserProcess {
         byte[] memory = Machine.processor().getMemory();
         
         int amount = 0;
-        //int checkVPN = Processor.pageFromAddress(vaddr);
+        
         
         while (length >0){
             //get the vpn from virtual address
@@ -154,6 +161,8 @@ public class VMProcess extends UserProcess {
             int offSet = Processor.offsetFromAddress(vaddr);
             //get ppn by accessing pageTable at index of vpn
             int ppn = pageTable[vpn].ppn;
+            VMKernel.invertedPT[ppn].pinned =  true;
+            VMKernel.numPinned++;
             int paddr = Processor.pageSize*ppn +offSet;
             //available spage left in each page
             int off = Processor.pageSize - offSet;
@@ -171,8 +180,12 @@ public class VMProcess extends UserProcess {
             vaddr += actualRead;
             offset += actualRead;
             amount += actualRead;
+            VMKernel.invertedPT[ppn].pinned =  false;
+            VMKernel.numPinned--;
+            if(VMKernel.numPinned == VMKernel.invertedPT.length-1){
+                VMKernel.unpinnedPage.wake();
+            }
         }
-        
         return amount;
     }
     public void handlePageFault(int faultVPN){

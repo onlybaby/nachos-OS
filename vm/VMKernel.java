@@ -27,6 +27,7 @@ public class VMKernel extends UserKernel {
         
         OpenFile file = ThreadedKernel.fileSystem.open(swapFileName, true);
         victim = 0;
+        numPinned = 0;
         invertedPT = new invertedData[Machine.processor().getNumPhysPages()];
     }
     
@@ -52,8 +53,12 @@ public class VMKernel extends UserKernel {
         if(freePage.size()!= 0){
             return freePage.removeFirst();
         }
+        
+        if(numPinned == invertedPT.length){
+            unpinnedPage.sleep(); //all pages pinned
+        }
         //Replacement algorithm
-        while(invertedPT[victim].entry.used == true){
+        while(invertedPT[victim].entry.used == true ||invertedPT[victim].pinned ==true){
             invertedPT[victim].entry.used = false;
             victim = (victim + 1) % invertedPT.length;
         }
@@ -96,5 +101,7 @@ public class VMKernel extends UserKernel {
     public static OpenFile swapFile;
     public static String swapFileName = ".TEM";
     public static invertedData[] invertedPT;
-    public static int victim; 
+    public static int victim;
+    public static int numPinned;
+    public static Condition unpinnedPage;
 }

@@ -40,14 +40,14 @@ public class VMProcess extends UserProcess {
      */
     protected boolean loadSections() {
         UserKernel.memLock.acquire(); //require a lock when we do memory allocation
-        
-        if (numPages > UserKernel.freePage.size()) {
+        /*
+        if (numPages > Machine.processor().getNumPhysPages()) {
             UserKernel.memLock.release(); //release the lock and return false if there is not enough physical memory to allocate
             coff.close();
             Lib.debug(dbgProcess, "\tinsufficient physical memory");
             return false;
         }
-        
+        */
         coffSectionNum = new int[numPages];
         coffPin =  new int[numPages];
         pageTable = new TranslationEntry[numPages]; //create a page table with the size numPage which we need
@@ -222,9 +222,7 @@ public class VMProcess extends UserProcess {
         int ppn = VMKernel.pageAllocation();
         VMKernel.swapIn(faultVPN, this, ppn);
         VMKernel.invertedPT[ppn] = new VMKernel.invertedData (this, pageTable[faultVPN], false);
-        
-        
-        
+               
     }
     
     /**

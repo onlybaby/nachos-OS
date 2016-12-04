@@ -30,6 +30,7 @@ public class VMKernel extends UserKernel {
         this.spn = 0;
         //swapFile = new OpenFile(file, swapFileName);
         victim = 0;
+        numPinned = 0;
         invertedPT = new invertedData[Machine.processor().getNumPhysPages()];
     }
     
@@ -70,8 +71,12 @@ public class VMKernel extends UserKernel {
         if(freePage.size()!= 0){
             return freePage.removeFirst();
         }
+        
+        if(numPinned == invertedPT.length){
+            unpinnedPage.sleep(); //all pages pinned
+        }
         //Replacement algorithm
-        while(invertedPT[victim].entry.used == true){
+        while(invertedPT[victim].entry.used == true ||invertedPT[victim].pinned ==true){
             invertedPT[victim].entry.used = false;
             victim = (victim + 1) % invertedPT.length;
         }
@@ -117,4 +122,6 @@ public class VMKernel extends UserKernel {
     public static int victim; 
     public static LinkedList<Integer> freeSwapList;
     public static int spn;
+    public static int numPinned;
+    public static Condition unpinnedPage;
 }

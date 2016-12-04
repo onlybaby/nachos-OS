@@ -218,6 +218,13 @@ public class VMProcess extends UserProcess {
             System.arraycopy(buffer, 0, memory, pageTable[faultVPN].ppn*pageSize, pageSize);
             pageTable[faultVPN].valid = true;
         }
+        
+        int ppn = VMKernel.pageAllocation();
+        VMKernel.swapIn(faultVPN, this, ppn);
+        VMKernel.invertedPT[ppn] = new VMKernel.invertedData (this, pageTable[faultVPN], false);
+        
+        
+        
     }
     
     /**

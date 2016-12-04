@@ -49,9 +49,27 @@ public class VMKernel extends UserKernel {
     }
     
     //update the inverted table
-    public static boolean swapIn(){
+    public static boolean swapIn(int vpn, VMProcess workprocess, int ppn){
+    	
+    	//get the SPN
+    	int tempSPN = workprocess.pageTable[vpn].vpn;
+    	
+    	//read from swapFile
+    	byte[] memory = Machine.processor().getMemory();
+    	swapFile.read(tempSPN*Processor.pageSize, memory, ppn*Processor.pageSize, Processor.pageSize);
+    	
+    	//add the spn to the freeSwapList
+    	freeSwapList.add(tempSPN);
+   	    
+    	//put ppn into translation entry and set to valid bit to true
+    	
+    	workprocess.pageTable[vpn].ppn = ppn;
+    	workprocess.pageTable[vpn].vpn = vpn;
+   	    workprocess.pageTable[vpn].valid = true;
+   	    
         return true;
     }
+    
     public static boolean swapOut(int ppn){
     	//if(ppn >= 0 || ppn)
     	int tempSPN = 0;
@@ -62,6 +80,7 @@ public class VMKernel extends UserKernel {
          }
   
     	 invertedPT[ppn].entry.vpn = tempSPN;
+    	 invertedPT[ppn].entry.valid = false;
     	 byte[] memory = Machine.processor().getMemory();
     	 swapFile.write(tempSPN*Processor.pageSize, memory, ppn*Processor.pageSize, Processor.pageSize);  
     	 
@@ -83,6 +102,8 @@ public class VMKernel extends UserKernel {
         
         int toEvict = victim;
         victim = (victim + 1) % invertedPT.length;
+        if(invertedPT[toEvict].entry.dirty==true)
+        	swapOut(toEvict);
         return toEvict;
     }
     

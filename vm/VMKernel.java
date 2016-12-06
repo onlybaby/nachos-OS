@@ -27,11 +27,16 @@ public class VMKernel extends UserKernel {
         
         swapFile = ThreadedKernel.fileSystem.open(swapFileName, true);
         freeSwapList = new LinkedList<Integer>();
-        this.spn = 0;
         //swapFile = new OpenFile(file, swapFileName);
         victim = 0;
         numPinned = 0;
+        spn = 0;
         invertedPT = new invertedData[Machine.processor().getNumPhysPages()];
+        swapFileLock = new Lock();
+        swapListLock = new Lock();
+        pinnedLock = new Lock();
+        spnLock = new Lock();
+        
     }
     
     /**
@@ -50,41 +55,51 @@ public class VMKernel extends UserKernel {
     
     //update the inverted table
     public static boolean swapIn(int vpn, VMProcess workprocess, int ppn){
-    	
-    	//get the SPN
-    	int tempSPN = workprocess.pageTable[vpn].vpn;
-    	
-    	//read from swapFile
-    	byte[] memory = Machine.processor().getMemory();
-    	swapFile.read(tempSPN*Processor.pageSize, memory, ppn*Processor.pageSize, Processor.pageSize);
-    	
-    	//add the spn to the freeSwapList
-    	freeSwapList.add(tempSPN);
+        
+        //get the SPN
+        int tempSPN = workprocess.pageTable[vpn].vpn;
+        
+        //read from swapFile
+        byte[] memory = Machine.processor().getMemory();
+        
+        swapFileLock.acquire();
+        swapFile.read(tempSPN*Processor.pageSize, memory, ppn*Processor.pageSize, Processor.pageSize);
+        swapFileLock.release();
+        //add the spn to the freeSwapList
+        swapListLock.acquire();
+        freeSwapList.add(tempSPN);
+        swapListLock.release();
    	    
-    	//put ppn into translation entry and set to valid bit to true
-    	
-    	workprocess.pageTable[vpn].ppn = ppn;
-    	workprocess.pageTable[vpn].vpn = vpn;
+        //put ppn into translation entry and set to valid bit to true
+        proLock.acquire();
+        workprocess.pageTable[vpn].ppn = ppn;
+        workprocess.pageTable[vpn].vpn = vpn;
    	    workprocess.pageTable[vpn].valid = true;
+   	    proLock.release();
    	    
         return true;
     }
     
     public static boolean swapOut(int ppn){
-    	//if(ppn >= 0 || ppn)
-    	int tempSPN = 0;
-    	 if(VMKernel.freeSwapList.size() == 0){
-         	tempSPN = ++spn;
-         } else {
-         	tempSPN = VMKernel.freeSwapList.removeFirst();
-         }
-  
-    	 invertedPT[ppn].entry.vpn = tempSPN;
-    	 invertedPT[ppn].entry.valid = false;
-    	 byte[] memory = Machine.processor().getMemory();
-    	 swapFile.write(tempSPN*Processor.pageSize, memory, ppn*Processor.pageSize, Processor.pageSize);  
-    	 
-    	 return true;
+        //if(ppn >= 0 || ppn)
+        int tempSPN = 0;
+        if(VMKernel.freeSwapList.size() == 0){
+            spnLock.acquire();
+            tempSPN = ++spn;
+            spnLock.release();
+        } else {
+            swapListLock.acquire();
+            tempSPN = VMKernel.freeSwapList.removeFirst();
+            swapListLock.release();
+        }
+        
+        invertedPT[ppn].entry.vpn = tempSPN;
+        invertedPT[ppn].entry.valid = false;
+        byte[] memory = Machine.processor().getMemory();
+        swapFileLock.acquire();
+        swapFile.write(tempSPN*Processor.pageSize, memory, ppn*Processor.pageSize, Processor.pageSize);
+        swapFileLock.release();
+        return true;
     }
     public static int pageAllocation(){
         if(freePage.size()!= 0){
@@ -103,7 +118,7 @@ public class VMKernel extends UserKernel {
         int toEvict = victim;
         victim = (victim + 1) % invertedPT.length;
         if(invertedPT[toEvict].entry.dirty==true)
-        	swapOut(toEvict);
+            swapOut(toEvict);
         return toEvict;
     }
     
@@ -125,8 +140,8 @@ public class VMKernel extends UserKernel {
      * Terminate this kernel. Never returns.
      */
     public void terminate() {
-        //swapFile.close();
-        //ThreadedKernel.fileSystem.remove(swapFile.getName());
+        swapFile.close();
+        ThreadedKernel.fileSystem.remove(swapFile.getName());
         super.terminate();
     }
     
@@ -136,13 +151,17 @@ public class VMKernel extends UserKernel {
     
     private static final char dbgVM = 'v';
     //public static LinkedList <Integer> VMFreePage = new LinkedList <Integer>();
-    private static LinkedList<Integer> freeSwapPages;
+    public static int spn;
+    public static Lock spnLock;
     public static OpenFile swapFile;
+    public static Lock swapFileLock;
     public static String swapFileName = ".TEM";
     public static invertedData[] invertedPT;
-    public static int victim; 
+    public static Lock invertedLock;
+    public static int victim;
     public static LinkedList<Integer> freeSwapList;
-    public static int spn;
+    public static Lock swapListLock;
     public static int numPinned;
+    public static Lock pinnedLock;
     public static Condition unpinnedPage;
 }

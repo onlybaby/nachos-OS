@@ -1,4 +1,4 @@
-------[ Sat Dec  3 21:40:23 2016 ]------
+------[ Sat Dec 10 01:23:28 2016 ]------
 --[ swap4: Tests swapping by initializing an array larger than physical memory and reading through it - does not dirty the pages again ]--
 nachos 5.0j initializing... config interrupt timer processor console user-check grader
 exit here !!!!

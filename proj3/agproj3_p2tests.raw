@@ -1,4 +1,4 @@
-------[ Sat Dec  3 22:20:23 2016 ]------
+------[ Sat Dec 10 23:44:37 2016 ]------
 --[ read-abc-1: Test reading short file w/ length less than file size ]--
 nachos 5.0j initializing... config interrupt timer processor console user-check grader
 exit here !!!!

@@ -61,21 +61,20 @@ public class VMKernel extends UserKernel {
         if(tempSPN < 0 || ppn < 0) return false;
         //read from swapFile
         byte[] memory = Machine.processor().getMemory();
-        
-        //swapFileLock.acquire();
+        swapFileLock.acquire();
         swapFile.read(tempSPN*Processor.pageSize, memory, ppn*Processor.pageSize, Processor.pageSize);
-        //swapFileLock.release();
+        swapFileLock.release();
         //add the spn to the freeSwapList
-        //swapListLock.acquire();
+        swapListLock.acquire();
         freeSwapList.add(tempSPN);
-        //swapListLock.release();
+        swapListLock.release();
    	    
         //put ppn into translation entry and set to valid bit to true
-        //proLock.acquire();
+        proLock.acquire();
         workprocess.pageTable[vpn].ppn = ppn;
         //workprocess.pageTable[vpn].vpn = vpn;
    	    workprocess.pageTable[vpn].valid = true;
-   	    //proLock.release();
+   	    proLock.release();
    	    
         return true;
     }
@@ -84,21 +83,21 @@ public class VMKernel extends UserKernel {
         //if(ppn >= 0 || ppn)
         int tempSPN = 0;
         if(VMKernel.freeSwapList.size() == 0){
-            //spnLock.acquire();
+            spnLock.acquire();
             tempSPN = ++spn;
-            //spnLock.release();
+            spnLock.release();
         } else {
-            //swapListLock.acquire();
+            swapListLock.acquire();
             tempSPN = VMKernel.freeSwapList.removeFirst();
-            //swapListLock.release();
+            swapListLock.release();
         }
         
         invertedPT[ppn].entry.vpn = tempSPN;
         //invertedPT[ppn].entry.valid = false;
         byte[] memory = Machine.processor().getMemory();
-        //swapFileLock.acquire();
+        swapFileLock.acquire();
         swapFile.write(tempSPN*Processor.pageSize, memory, ppn*Processor.pageSize, Processor.pageSize);
-        //swapFileLock.release();
+        swapFileLock.release();
         return true;
     }
     public static int pageAllocation(){

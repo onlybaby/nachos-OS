@@ -100,7 +100,9 @@ public class VMProcess extends UserProcess {
             // get ppn by accessing pageTale according to vpn index
             int ppn = pageTable[vpn].ppn;
             VMKernel.invertedPT[ppn].pinned =  true;
+            VMKernel.pinnedLock.acquire();
             VMKernel.numPinned++;
+            VMKernel.pinnedLock.release();
             //where to start reading in physical memory
             int paddr = Processor.pageSize*ppn +offSet;
             //available space left for each page
@@ -121,10 +123,12 @@ public class VMProcess extends UserProcess {
             offset += actualRead;
             amount += actualRead;
             VMKernel.invertedPT[ppn].pinned =  false;
+            VMKernel.pinnedLock.acquire();
             VMKernel.numPinned--;
             if(VMKernel.numPinned == VMKernel.invertedPT.length-1){
                 VMKernel.unpinnedPage.wake();
             }
+            VMKernel.pinnedLock.release();
         }
         
         return amount;
@@ -157,7 +161,9 @@ public class VMProcess extends UserProcess {
             //get ppn by accessing pageTable at index of vpn
             int ppn = pageTable[vpn].ppn;
             VMKernel.invertedPT[ppn].pinned =  true;
+            VMKernel.pinnedLock.acquire();
             VMKernel.numPinned++;
+            VMKernel.pinnedLock.release();
             int paddr = Processor.pageSize*ppn +offSet;
             //available spage left in each page
             int off = Processor.pageSize - offSet;
@@ -176,10 +182,12 @@ public class VMProcess extends UserProcess {
             offset += actualRead;
             amount += actualRead;
             VMKernel.invertedPT[ppn].pinned =  false;
+            VMKernel.pinnedLock.acquire();
             VMKernel.numPinned--;
             if(VMKernel.numPinned == VMKernel.invertedPT.length-1){
                 VMKernel.unpinnedPage.wake();
             }
+            VMKernel.pinnedLock.release();
         }
         return amount;
     }

@@ -48,8 +48,8 @@ public class VMProcess extends UserProcess {
             return false;
         }
         */
-        coffSectionNum = new int[numPages];
-        coffPin =  new int[numPages];
+        //coffSectionNum = new int[numPages];
+        //coffPin =  new int[numPages];
         pageTable = new TranslationEntry[numPages]; //create a page table with the size numPage which we need
         
         for (int i = 0; i < numPages; i++){
@@ -58,7 +58,6 @@ public class VMProcess extends UserProcess {
         }
         
         UserKernel.memLock.release(); //release the lock after we allocate the memory
-        //int lastVPN = 0;
         // load sections
         for (int s = 0; s < coff.getNumSections(); s++) {
             CoffSection section = coff.getSection(s);
@@ -69,9 +68,6 @@ public class VMProcess extends UserProcess {
                 int vpn = section.getFirstVPN() + i;
                 if(pageTable[vpn] == null) return false;
                 pageTable[vpn].vpn = i;
-                //lastVPN = vpn;
-                coffPin[vpn] = 1;
-                coffSectionNum[vpn] = s;
                 pageTable[vpn].readOnly = section.isReadOnly(); //set read only bit to each entry in page table
             }
         }
@@ -135,6 +131,93 @@ public class VMProcess extends UserProcess {
         return amount;
     }
     
+	/*public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+		System.out.println("read HERE!!!!!");
+		Lib.assertTrue(offset >= 0 && length >= 0
+				&& offset + length <= data.length);
+
+		byte[] memory = Machine.processor().getMemory();	
+	
+		// for now, just assume that virtual addresses equal physical addresses
+		if (vaddr < 0 || vaddr >= memory.length)
+			return 0;
+
+		int vpn = Processor.pageFromAddress(vaddr);
+		int vpnOff = Processor.offsetFromAddress(vaddr);
+		if(vpn < 0 || vpn >= pageTable.length)
+			return 0;
+		TranslationEntry ent = pageTable[vpn];
+		
+		//check virtual page is valid
+		if(!ent.valid)
+			handlePageFault(vpn);
+			
+		int phyAdd = pageSize*ent.ppn + vpnOff;
+		ent.used = true;
+		VMKernel.invertedPT[ent.ppn].pinned = true;
+		int amount = 0;
+
+		while(length > 0)
+		{
+			if(vpnOff + length <= pageSize)
+			{
+				System.arraycopy(memory, phyAdd, data, offset, length);
+				amount += length;
+				length -= length;
+			}
+			else
+			{
+				int written = pageSize - vpnOff;
+				length = length - written;
+				System.arraycopy(memory, phyAdd, data, offset, written);
+				amount += written;
+				offset += written;
+				//pageTable[vpn].used = false;
+				VMKernel.invertedPT[ent.ppn].pinned = false;
+				
+				//VMKernel.pinLock.acquire();
+				//if(VMKernel.allpin)
+				if(VMKernel.numPinned == VMKernel.invertedPT.length-1)
+				{
+					//VMKernel.allpin = false;
+					VMKernel.unpinnedPage.wake();
+				}
+				//VMKernel.pinLock.release();
+				
+				vpn++;
+				if(vpn >= pageTable.length)
+				{
+					break;
+				}
+				else
+				{
+					ent = pageTable[vpn];
+					if(!ent.valid)
+						handlePageFault(vpn);
+					ent.used = true;
+					VMKernel.invertedPT[ent.ppn].pinned = true;
+					vpnOff = 0;
+					phyAdd = pageSize * ent.ppn + vpnOff;
+				}
+			}
+		}
+		
+		//pageTable[vpn].used = false;
+		VMKernel.invertedPT[ent.ppn].pinned = false;
+		
+		//VMKernel.pinLock.acquire();
+		//if(VMKernel.allpin)
+		if(VMKernel.numPinned == VMKernel.invertedPT.length-1)
+		{
+			//VMKernel.allpin = false;
+			VMKernel.unpinnedPage.wake();
+		}
+		//VMKernel.pinLock.release();
+		
+		return amount;
+	}*/
+
+    
     public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
         //System.out.println("here~~~~~~~~~~~~~~");
         Lib.assertTrue(offset >= 0 && length >= 0
@@ -188,8 +271,104 @@ public class VMProcess extends UserProcess {
         }
         return amount;
     }
+    /*public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+    	System.out.println("write HERE!!!!!");
+		Lib.assertTrue(offset >= 0 && length >= 0
+				&& offset + length <= data.length);
+
+		byte[] memory = Machine.processor().getMemory();
+
+		// for now, just assume that virtual addresses equal physical addresses
+		if (vaddr < 0 || vaddr >= memory.length)
+			return 0;
+
+		int vpn = Processor.pageFromAddress(vaddr);
+		int vpnOff = Processor.offsetFromAddress(vaddr);
+		if(vpn < 0 || vpn >= pageTable.length)
+			return 0;
+		TranslationEntry ent = pageTable[vpn];
+		ent.dirty = true;
+		
+		//check virtual page is valid
+		if(!ent.valid)
+			handlePageFault(vpn);
+		
+		int phyAdd = pageSize*ent.ppn + vpnOff;
+		ent.used = true;
+		VMKernel.invertedPT[ent.ppn].pinned = true;
+		int amount = 0;
+		
+		if(ent.readOnly == true)
+			return amount;
+
+		while(length > 0)
+		{
+			if(vpnOff + length <= pageSize)
+			{
+				System.arraycopy(data, offset, memory, phyAdd, length);
+				amount += length;
+				length -= length;
+			}
+			else
+			{
+				int written = pageSize - vpnOff;
+				length = length - written;
+				System.arraycopy(data, offset, memory, phyAdd, written);
+				amount += written;
+				offset += written;
+				//pageTable[vpn].used = false;
+				VMKernel.invertedPT[ent.ppn].pinned = false;
+				//if(VMKernel.allpin)
+				if(VMKernel.numPinned == VMKernel.invertedPT.length-1)
+				{
+					//VMKernel.allpin = false;
+					VMKernel.unpinnedPage.wake();
+				}
+				
+				vpn++;
+				if(vpn >= pageTable.length)
+				{
+					break;
+				}
+				else
+				{
+					ent = pageTable[vpn];
+					if(!ent.valid)
+						handlePageFault(vpn);
+					ent.dirty = true;
+					ent.used = true;
+					VMKernel.invertedPT[ent.ppn].pinned = false;
+					vpnOff = 0;
+					phyAdd = pageSize * ent.ppn + vpnOff;
+				}
+			}
+		}
+		
+		//pageTable[vpn].used = false;
+		VMKernel.invertedPT[ent.ppn].pinned = false;
+		
+		//VMKernel.pinLock.acquire();
+		//if(VMKernel.allpin)
+		if(VMKernel.numPinned == VMKernel.invertedPT.length-1)
+		{
+			//VMKernel.allpin = false;
+			VMKernel.unpinnedPage.wake();
+		}
+		//VMKernel.pinLock.release();
+		
+		return amount;
+	}*/
+
     public void handlePageFault(int faultVPN){
-        if(pageTable[faultVPN].dirty == false){
+    	System.out.println("pagetanle faultvpn dot value is :" + pageTable[faultVPN].dirty);
+    	if(pageTable[faultVPN].dirty == true){
+    		System.out.println("here!!!!");
+    		int ppn = VMKernel.pageAllocation();
+            VMKernel.swapIn(faultVPN, this, ppn);
+            pageTable[faultVPN].valid = true;
+            VMKernel.invertedPT[ppn] = new VMKernel.invertedData (this, pageTable[faultVPN], false);
+    	} else {
+    		System.out.println("Ni Hao ^^^^^^^");
             for (int s = 0; s < coff.getNumSections(); s++) {
                 CoffSection section = coff.getSection(s);
                 Lib.debug(dbgProcess, "\tinitializing " + section.getName()
@@ -217,11 +396,7 @@ public class VMProcess extends UserProcess {
             byte[] buffer = new byte[pageSize];
             System.arraycopy(buffer, 0, memory, pageTable[faultVPN].ppn*pageSize, pageSize);
             pageTable[faultVPN].valid = true;
-        }
-        
-        int ppn = VMKernel.pageAllocation();
-        VMKernel.swapIn(faultVPN, this, ppn);
-        VMKernel.invertedPT[ppn] = new VMKernel.invertedData (this, pageTable[faultVPN], false);
+        } 
                
     }
     
@@ -261,8 +436,8 @@ public class VMProcess extends UserProcess {
     
     private static final char dbgVM = 'v';
     private static int lastVPN;
-    private int[] coffSectionNum;
-    private int[] coffPin;
+    //private int[] coffSectionNum;
+    // int[] coffPin;
     //private Lock VMPLock;
     
 }
